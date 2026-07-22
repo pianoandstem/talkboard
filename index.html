@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>Talk Board</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F8F5B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Talk Board">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F6F5F1;
+    --panel: #FFFFFF;
+    --ink: #2B2A28;
+    --ink-soft: #5B5A56;
+    --line: #E3E1D9;
+
+    /* Fitzgerald-key style grammatical color coding, kept low-saturation */
+    --c-core:  #F6D8A8; --c-core-ink:  #5C4413;
+    --c-pron:  #F5EFA1; --c-pron-ink:  #5A5310;
+    --c-verb:  #B7DDBE; --c-verb-ink:  #1F4A2A;
+    --c-desc:  #B9D6E8; --c-desc-ink:  #1B3E52;
+    --c-noun:  #F3C3A0; --c-noun-ink:  #63340E;
+    --c-social:#E3C7EA; --c-social-ink:#452258;
+    --c-time:  #D9D4C7; --c-time-ink:  #3D3A32;
+    --c-quest: #CBB9E8; --c-quest-ink: #3A245C;
+
+    --speak-green: #2F8F5B;
+    --stop-red: #C4523B;
+    --radius: 16px;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  button{ font-family: inherit; }
+
+  /* focus visibility everywhere */
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline: 3px solid #1D5FBF;
+    outline-offset: 2px;
+  }
+
+  .app{
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 14px 14px 28px;
+  }
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  header.top h1{
+    font-size: 1.4rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  .mode-switch{
+    display:flex;
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .mode-switch button{
+    border: none;
+    background: transparent;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .mode-switch button.active{
+    background: var(--ink);
+    color: #fff;
+  }
+
+  /* ---------- Sentence strip ---------- */
+  .strip-wrap{
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .strip{
+    min-height: 64px;
+    display:flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items:center;
+    padding: 4px 2px 10px;
+    border-bottom: 2px dashed var(--line);
+    margin-bottom: 10px;
+  }
+  .strip .placeholder{
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    padding: 8px 4px;
+  }
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    border: none;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height:1.1;
+  }
+  .chip .x{
+    font-size: 0.85rem;
+    opacity: 0.55;
+  }
+  .strip-controls{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn{
+    border: none;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn-speak{
+    background: var(--speak-green);
+    color: #fff;
+    font-size: 1.2rem;
+    padding: 14px 26px;
+    flex: 1 1 220px;
+    justify-content:center;
+  }
+  .btn-clear{ background: var(--stop-red); color: #fff; }
+  .btn-back{ background: #EDEAE0; color: var(--ink); }
+
+  /* ---------- Category tabs ---------- */
+  nav.categories{
+    display:flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    scrollbar-width: thin;
+  }
+  nav.categories button{
+    flex: none;
+    border: 2px solid var(--line);
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  nav.categories button.active{
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  /* ---------- Word grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  .word-btn{
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px 8px 12px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap: 6px;
+    cursor: pointer;
+    min-height: 96px;
+    text-align:center;
+  }
+  .word-btn .icon{ font-size: 2rem; line-height:1; }
+  .word-btn .label{ font-size: 1rem; font-weight: 700; }
+  .word-btn:active{ transform: scale(0.97); }
+
+  /* color classes */
+  .cat-core   { background: var(--c-core);   color: var(--c-core-ink); }
+  .cat-pron   { background: var(--c-pron);   color: var(--c-pron-ink); }
+  .cat-verb   { background: var(--c-verb);   color: var(--c-verb-ink); }
+  .cat-desc   { background: var(--c-desc);   color: var(--c-desc-ink); }
+  .cat-noun   { background: var(--c-noun);   color: var(--c-noun-ink); }
+  .cat-social { background: var(--c-social); color: var(--c-social-ink); }
+  .cat-time   { background: var(--c-time);   color: var(--c-time-ink); }
+  .cat-quest  { background: var(--c-quest);  color: var(--c-quest-ink); }
+
+  /* ---------- Legend ---------- */
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px 16px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:12px; height:12px; border-radius:4px; display:inline-block; }
+
+  /* ---------- Type mode ---------- */
+  .type-panel{
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .type-panel label{
+    display:block;
+    font-weight:700;
+    margin-bottom: 8px;
+  }
+  .type-panel textarea{
+    width: 100%;
+    min-height: 120px;
+    font-size: 1.3rem;
+    font-family: inherit;
+    padding: 14px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    resize: vertical;
+    color: var(--ink);
+  }
+  .type-actions{
+    display:flex;
+    gap:10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .settings{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 2px solid var(--line);
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .settings label{ display:flex; align-items:center; gap:8px; }
+  .settings input[type="range"]{ width: 140px; }
+  .settings input[type="checkbox"]{ width:20px; height:20px; }
+
+  footer.credit{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    margin-top: 22px;
+  }
+
+  @media (max-width: 480px){
+    .word-btn .icon{ font-size: 1.7rem; }
+    .word-btn .label{ font-size: 0.9rem; }
+    .btn-speak{ font-size: 1.05rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>🗣️ Talk Board</h1>
+    <div class="mode-switch" role="tablist" aria-label="Choose mode">
+      <button id="tab-boards" class="active" role="tab" aria-selected="true">Picture words</button>
+      <button id="tab-type" role="tab" aria-selected="false">Type to talk</button>
+    </div>
+  </header>
+
+  <!-- SENTENCE STRIP (always visible) -->
+  <div class="strip-wrap">
+    <div class="strip" id="strip">
+      <span class="placeholder" id="strip-placeholder">Tap words below to build a sentence…</span>
+    </div>
+    <div class="strip-controls">
+      <button class="btn btn-speak" id="btn-speak">🔊 Speak</button>
+      <button class="btn btn-back" id="btn-back">⌫ Remove last</button>
+      <button class="btn btn-clear" id="btn-clear">🗑 Clear</button>
+    </div>
+  </div>
+
+  <!-- PICTURE BOARD MODE -->
+  <div id="panel-boards">
+    <nav class="categories" id="categories" aria-label="Word categories"></nav>
+    <div class="grid" id="grid"></div>
+
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--c-core)"></i>Quick words</span>
+      <span><i class="swatch" style="background:var(--c-pron)"></i>People words</span>
+      <span><i class="swatch" style="background:var(--c-verb)"></i>Action words</span>
+      <span><i class="swatch" style="background:var(--c-desc)"></i>Describing words</span>
+      <span><i class="swatch" style="background:var(--c-noun)"></i>Things &amp; places</span>
+      <span><i class="swatch" style="background:var(--c-social)"></i>Social words</span>
+      <span><i class="swatch" style="background:var(--c-time)"></i>Time words</span>
+      <span><i class="swatch" style="background:var(--c-quest)"></i>Question words</span>
+    </div>
+  </div>
+
+  <!-- TYPE MODE -->
+  <div id="panel-type" style="display:none;">
+    <div class="type-panel">
+      <label for="type-input">Type what you want to say</label>
+      <textarea id="type-input" placeholder="Start typing here…"></textarea>
+      <div class="type-actions">
+        <button class="btn btn-speak" id="btn-speak-typed">🔊 Speak this</button>
+        <button class="btn btn-clear" id="btn-clear-typed">🗑 Clear text</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <label><input type="checkbox" id="speak-on-tap" checked> Say each word when tapped</label>
+    <label>Speaking speed
+      <input type="range" id="rate" min="0.5" max="1.5" step="0.1" value="0.9">
+    </label>
+    <label>Voice (clear women's voices first)
+      <select id="voice-select"></select>
+    </label>
+  </div>
+
+  <footer class="credit">Works fully offline once loaded. Uses your device's built-in voices.</footer>
+</div>
+
+<script>
+(function(){
+  // ---------------- Word data ----------------
+  // Each category: key, label, css class, list of {icon, label, speak?}
+  const categories = [
+    { key:'core', label:'Quick words', css:'cat-core', words:[
+      ['👍','yes'], ['👎','no'], ['🙋','I want'], ['➕','more'], ['✋','stop'],
+      ['🆘','help'], ['🙏','please'], ['😊','thank you'], ['✅','all done'],
+      ['❤️','I like'], ['🚫',"I don't like"], ['👋','hello'], ['👋','bye'],
+      ['🙋‍♀️','Can I'], ['🤲','have'], ['🔧','use'],
+    ]},
+    { key:'people', label:'People', css:'cat-pron', words:[
+      ['🧍','I'], ['🫵','you'], ['👩','mom'], ['👨','dad'], ['🧑‍🏫','teacher'],
+      ['🧑‍🤝‍🧑','friend'], ['👧','sister'], ['👦','brother'], ['🩺','doctor'],
+    ]},
+    { key:'feelings', label:'Feelings', css:'cat-desc', words:[
+      ['😄','happy'], ['😢','sad'], ['😠','angry'], ['😨','scared'], ['😴','tired'],
+      ['🤩','excited'], ['🤒','sick'], ['🤕','hurt'], ['😌','calm'], ['😣','frustrated'],
+    ]},
+    { key:'actions', label:'Actions', css:'cat-verb', words:[
+      ['🚶','go'], ['🍽️','eat'], ['🥤','drink'], ['🧸','play'], ['🛌','sleep'],
+      ['👀','look'], ['👂','listen'], ['🚪','come'], ['🧼','wash'], ['📖','read'],
+      ['📺','watch'], ['🖐️','wait'],
+    ]},
+    { key:'food', label:'Food & drink', css:'cat-noun', words:[
+      ['💧','water'], ['🧃','juice'], ['🥛','milk'], ['🍎','apple'], ['🥪','sandwich'],
+      ['🍕','pizza'], ['🍪','cookie'], ['🥣','breakfast'], ['🥗','lunch'], ['🍝','dinner'],
+      ['🍿','snack'],
+    ]},
+    { key:'places', label:'Places', css:'cat-noun', words:[
+      ['🏠','home'], ['🏫','school'], ['🚻','bathroom'], ['🌳','outside'], ['🛝','park'],
+      ['🛒','store'], ['🚗','car'], ['🛏️','bed'],
+    ]},
+    { key:'things', label:'Things', css:'cat-noun', words:[
+      ['⚽','ball'], ['📚','book'], ['🧸','toy'], ['📱','phone'], ['📲','tablet'],
+      ['🎵','music'], ['🧣','blanket'], ['🎧','headphones'],
+    ]},
+    { key:'time', label:'Time', css:'cat-time', words:[
+      ['⏰','now'], ['⏳','later'], ['📅','today'], ['➡️','tomorrow'], ['🌅','morning'],
+      ['🌙','night'], ['⏱️','wait'],
+    ]},
+    { key:'questions', label:'Questions', css:'cat-quest', words:[
+      ['❓','what'], ['📍','where'], ['👤','who'], ['🤔','why'], ['🕒','when'], ['❔','how'],
+    ]},
+  ];
+
+  // ---------------- State ----------------
+  let currentCat = categories[0].key;
+  let sentence = []; // array of {icon,label}
+
+  // ---------------- Elements ----------------
+  const gridEl = document.getElementById('grid');
+  const catNav = document.getElementById('categories');
+  const stripEl = document.getElementById('strip');
+  const placeholderEl = document.getElementById('strip-placeholder');
+  const speakOnTapEl = document.getElementById('speak-on-tap');
+  const rateEl = document.getElementById('rate');
+  const voiceSelectEl = document.getElementById('voice-select');
+
+  const tabBoards = document.getElementById('tab-boards');
+  const tabType = document.getElementById('tab-type');
+  const panelBoards = document.getElementById('panel-boards');
+  const panelType = document.getElementById('panel-type');
+  const typeInput = document.getElementById('type-input');
+
+  // ---------------- Build category nav ----------------
+  categories.forEach(cat => {
+    const b = document.createElement('button');
+    b.textContent = cat.label;
+    b.dataset.key = cat.key;
+    b.setAttribute('role','tab');
+    if(cat.key === currentCat){ b.classList.add('active'); b.setAttribute('aria-selected','true'); }
+    else b.setAttribute('aria-selected','false');
+    b.addEventListener('click', () => {
+      currentCat = cat.key;
+      renderCategoryNav();
+      renderGrid();
+    });
+    catNav.appendChild(b);
+  });
+
+  function renderCategoryNav(){
+    [...catNav.children].forEach(b => {
+      const active = b.dataset.key === currentCat;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  // ---------------- Build grid ----------------
+  function renderGrid(){
+    gridEl.innerHTML = '';
+    const cat = categories.find(c => c.key === currentCat);
+    cat.words.forEach(([icon, label]) => {
+      const btn = document.createElement('button');
+      btn.className = 'word-btn ' + cat.css;
+      btn.innerHTML = `<span class="icon" aria-hidden="true">${icon}</span><span class="label">${label}</span>`;
+      btn.addEventListener('click', () => addWord(icon, label));
+      gridEl.appendChild(btn);
+    });
+  }
+
+  // ---------------- Sentence strip ----------------
+  function addWord(icon, label){
+    sentence.push({icon, label});
+    renderStrip();
+    if(speakOnTapEl.checked){ speakText(label); }
+  }
+
+  function renderStrip(){
+    stripEl.innerHTML = '';
+    if(sentence.length === 0){
+      stripEl.appendChild(placeholderEl);
+      return;
+    }
+    sentence.forEach((w, i) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip cat-core';
+      chip.style.background = '#EDEAE0';
+      chip.style.color = 'var(--ink)';
+      chip.innerHTML = `<span aria-hidden="true">${w.icon}</span><span>${w.label}</span><span class="x">✕</span>`;
+      chip.title = 'Tap to remove';
+      chip.addEventListener('click', () => {
+        sentence.splice(i,1);
+        renderStrip();
+      });
+      stripEl.appendChild(chip);
+    });
+  }
+
+  document.getElementById('btn-back').addEventListener('click', () => {
+    sentence.pop();
+    renderStrip();
+  });
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    sentence = [];
+    renderStrip();
+  });
+  document.getElementById('btn-speak').addEventListener('click', () => {
+    if(sentence.length === 0) return;
+    speakText(sentence.map(w => w.label).join(' '));
+  });
+
+  // ---------------- Type mode ----------------
+  tabBoards.addEventListener('click', () => switchMode('boards'));
+  tabType.addEventListener('click', () => switchMode('type'));
+
+  function switchMode(mode){
+    const isBoards = mode === 'boards';
+    tabBoards.classList.toggle('active', isBoards);
+    tabType.classList.toggle('active', !isBoards);
+    tabBoards.setAttribute('aria-selected', isBoards);
+    tabType.setAttribute('aria-selected', !isBoards);
+    panelBoards.style.display = isBoards ? '' : 'none';
+    panelType.style.display = isBoards ? 'none' : '';
+  }
+
+  document.getElementById('btn-speak-typed').addEventListener('click', () => {
+    const text = typeInput.value.trim();
+    if(text) speakText(text);
+  });
+  document.getElementById('btn-clear-typed').addEventListener('click', () => {
+    typeInput.value = '';
+    typeInput.focus();
+  });
+  typeInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      const text = typeInput.value.trim();
+      if(text) speakText(text);
+    }
+  });
+
+  // ---------------- Speech ----------------
+  let voices = [];
+
+  // Heuristic: browsers don't label voice gender directly, so score by
+  // known female voice names/keywords across Chrome, Safari, Edge, Android.
+  const FEMALE_HINTS = [
+    'female','samantha','victoria','karen','tessa','moira','fiona','veena',
+    'zira','susan','hazel','catherine','linda','heera','amelie','audrey',
+    'aria','jenny','sara','emma','ava','allison','ana','paulina','monica',
+    'zosia','kyoko','mei-jia','ting-ting','sin-ji','google us english',
+    'google uk english female','samantha (enhanced)'
+  ];
+  function femaleScore(voice){
+    const n = voice.name.toLowerCase();
+    let score = 0;
+    FEMALE_HINTS.forEach(h => { if(n.includes(h)) score += 2; });
+    if(voice.localService) score += 1; // local voices are usually clearer/faster
+    if(/^en/i.test(voice.lang)) score += 1;
+    return score;
+  }
+
+  function loadVoices(){
+    const all = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    // Sort so likely-clearest women's voices float to the top of the list
+    voices = [...all].sort((a,b) => femaleScore(b) - femaleScore(a));
+    voiceSelectEl.innerHTML = '';
+    if(voices.length === 0){
+      const opt = document.createElement('option');
+      opt.textContent = 'Default voice';
+      voiceSelectEl.appendChild(opt);
+      return;
+    }
+    voices.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${v.name} (${v.lang})`;
+      voiceSelectEl.appendChild(opt);
+    });
+    // Auto-select the top-scoring (most likely clear, female-sounding) voice
+    voiceSelectEl.value = 0;
+  }
+  if('speechSynthesis' in window){
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  } else {
+    voiceSelectEl.innerHTML = '<option>Not supported in this browser</option>';
+  }
+
+  function speakText(text){
+    if(!('speechSynthesis' in window)){
+      alert('Sorry — this browser does not support spoken voice output. Try Chrome, Safari, or Edge.');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = parseFloat(rateEl.value);
+    const idx = voiceSelectEl.value;
+    if(voices[idx]) utter.voice = voices[idx];
+    window.speechSynthesis.speak(utter);
+  }
+
+  // ---------------- Init ----------------
+  renderCategoryNav();
+  renderGrid();
+  renderStrip();
+
+  // ---------------- PWA install support ----------------
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {
+        // fails silently if not served over https/localhost — app still works normally
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
